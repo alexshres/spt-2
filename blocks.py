@@ -45,3 +45,12 @@ class LayerNorm(nn.Module):
 
         return ln
 
+class CausalAttention(nn.Module):
+    raise NotImplementedError
+
+
+class MLP(nn.Module):
+    raise NotImplementedError
+
+
+
