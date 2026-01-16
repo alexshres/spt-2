@@ -19,7 +19,16 @@ class Embedding(nn.Module):
     def forward(self,
                 tokens: Int[Tensor, "batch seq"]
     ) -> Float[Tensor, "batch seq d_model"]:
-        raise NotImplementedError
+        """
+        Arguments:
+            tokens (Int[Tensor, "batch seq"]):  Batches of sequences
+
+        Returns:
+            embed (Float[Tensor, "batch seq d_model"]): Batches of sequences projected onto embedding space (d_model)
+
+        """
+
+        return self.W_E[tokens, :]
 
 
 class PositionEmbedding(nn.Module):
@@ -29,5 +38,18 @@ class PositionEmbedding(nn.Module):
         self.W_P = nn.Parameter(t.empty((config.n_ctx, config.d_model)))
         nn.init.normal_(self.W_P, std=config.init_range)
 
-    def forward(self, tokens):
-        raise NotImplementedError
+    def forward(self, tokens: Int[Tensor, "batch seq"]) -> Float[Tensor, "batch seq d_model"] :
+        """
+        Args:
+            tokens (Int[Tensor, "batch seq"]): Batches of sequences
+
+        Returns:
+            pos_embed (Float[Tensor, "batch seq d_model"]): Batches of sequences projected onto positional embedding space
+        """
+
+        seq_len = tokens.shape[1]
+        pos_embed = self.W_P[:seq_len, :]
+        pos_embed = einops.repeat(pos_embed,
+                                  "pos d_model -> batch pos d_model")
+
+        return pos_embed

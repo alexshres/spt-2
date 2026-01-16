@@ -4,7 +4,7 @@ import einops
 import config as cfg
 
 from torch import Tensor
-from jaxtyping import Float, Int
+from jaxtyping import Float
 
 class LayerNorm(nn.Module):
     """
