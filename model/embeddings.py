@@ -1,7 +1,7 @@
 import torch as t
 import torch.nn as nn
 import einops
-import config as cfg
+import model.config as cfg
 
 from torch import Tensor
 from jaxtyping import Float, Int
@@ -9,6 +9,7 @@ from jaxtyping import Float, Int
 
 class Embedding(nn.Module):
     def __init__(self, config: cfg.Config):
+        super().__init__()
         self.cfg = config
         
         # fill the learnable embedding matrix with a normal distribution
@@ -33,6 +34,7 @@ class Embedding(nn.Module):
 
 class PositionEmbedding(nn.Module):
     def __init__(self, config: cfg.Config):
+        super().__init__()
         self.cfg = config
 
         self.W_P = nn.Parameter(t.empty((config.n_ctx, config.d_model)))
