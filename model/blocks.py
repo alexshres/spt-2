@@ -27,7 +27,7 @@ class LayerNorm(nn.Module):
         self.b = nn.Parameter(t.zeros(config.d_model))
 
     def forward(self, 
-                residual: Float[Tensor, "batch seq d_model"]) -> Float[Tensor, "batch seq d_model"]:
+                residual: Float[Tensor, "batch seq d_model"]) -> Float[Tensor, "batch seq d_model"]:  # noqa: F722
 
         # can also do
         # >>> residual.mean(dim=-1, keepdim=True)
