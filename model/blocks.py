@@ -48,6 +48,7 @@ class LayerNorm(nn.Module):
 
 class CausalAttention(nn.Module):
     IGNORE: Float[Tensor, ""]
+
     def __init__(self, config: cfg.Config):
         super().__init__()
         self.cfg = config
@@ -58,10 +59,10 @@ class CausalAttention(nn.Module):
         self.W_V = nn.Parameter(t.empty(config.n_heads, config.d_model, config.d_head))
         self.W_O = nn.Parameter(t.empty(config.n_heads, config.d_head, config.d_model))
 
-        self.b_Q = nn.Parameter(t.empty(config.n_heads, config.d_head))
-        self.b_K = nn.Parameter(t.empty(config.n_heads, config.d_head))
-        self.b_V = nn.Parameter(t.empty(config.n_heads, config.d_head))
-        self.b_O = nn.Parameter(t.empty(config.d_model))
+        self.b_Q = nn.Parameter(t.zeros(config.n_heads, config.d_head))
+        self.b_K = nn.Parameter(t.zeros(config.n_heads, config.d_head))
+        self.b_V = nn.Parameter(t.zeros(config.n_heads, config.d_head))
+        self.b_O = nn.Parameter(t.zeros(config.d_model))
 
         nn.init_normal_(self.W_Q, std=config.init_range)
         nn.init_normal_(self.W_K, std=config.init_range)
@@ -100,10 +101,6 @@ class CausalAttention(nn.Module):
                           ) -> Float[Tensor, "batch n_heads pos_q pos_k"]:
         """
         Applies a causal mask to scores and returns masked scores 
-        :param scores: 
-        :type scores: Float[Tensor, "batch n_heads pos_q pos_k"]
-        :return: Description
-        :rtype: Tensor
         """
         
         s = scores.shape[-1]
@@ -116,7 +113,32 @@ class CausalAttention(nn.Module):
 
 
 class MLP(nn.Module):
-    pass
+    def __init__(self, config: cfg.Config):
+        super().__init__()
+        self.config = config
+
+        # params
+        self.W_in = nn.Parameter(t.empty((config.d_model, config.d_mlp)))
+        self.W_out = nn.Parameter(t.empty((config.d_mlp, config.d_model)))
+        self.b_in = nn.Parameter(t.zeros((config.d_mlp)))
+        self.b_out = nn.Parameter(t.zeros((config.d_model)))
+
+        nn.init.normal_(self.W_in, std=config.init_range)
+        nn.init.normal_(self.W_out, std=config.init_range)
+
+
+    def forward(self,
+                normalized_resid_mid: Float[Tensor, "batch posn d_model"]
+                ) -> Float[Tensor, "batch posn d_model"]:
+        hidden = einops.einsum(normalized_resid_mid,
+                               self.W_in,
+                               "b p d, d m -> b p m") + self.b_in
+        hidden = nn.functional.gelu(hidden)
+        mlp_out = einops.einsum(hidden,
+                                self.W_out,
+                                "b p m, m d -> b p d") + self.b_out
+
+        return mlp_out
 
 
 
