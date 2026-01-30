@@ -40,7 +40,7 @@ class PositionEmbedding(nn.Module):
         self.W_P = nn.Parameter(t.empty((config.n_ctx, config.d_model)))
         nn.init.normal_(self.W_P, std=config.init_range)
 
-    def forward(self, tokens: Int[Tensor, "batch seq"]) -> Float[Tensor, "batch seq d_model"] :
+    def forward(self, tokens: Int[Tensor, "batch seq"]) -> Float[Tensor, "batch seq d_model"]:
         """
         Args:
             tokens (Int[Tensor, "batch seq"]): Batches of sequences

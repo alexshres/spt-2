@@ -2,9 +2,11 @@ import torch as t
 import torch.nn as nn
 import einops
 import model.config as cfg
+import math
 
 from torch import Tensor
 from jaxtyping import Float
+
 
 class LayerNorm(nn.Module):
     """
@@ -45,7 +47,72 @@ class LayerNorm(nn.Module):
         return ln
 
 class CausalAttention(nn.Module):
-    pass
+    IGNORE: Float[Tensor, ""]
+    def __init__(self, config: cfg.Config):
+        super().__init__()
+        self.cfg = config
+
+        # weights and bias params
+        self.W_Q = nn.Parameter(t.empty(config.n_heads, config.d_model, config.d_head))
+        self.W_K = nn.Parameter(t.empty(config.n_heads, config.d_model, config.d_head))
+        self.W_V = nn.Parameter(t.empty(config.n_heads, config.d_model, config.d_head))
+        self.W_O = nn.Parameter(t.empty(config.n_heads, config.d_head, config.d_model))
+
+        self.b_Q = nn.Parameter(t.empty(config.n_heads, config.d_head))
+        self.b_K = nn.Parameter(t.empty(config.n_heads, config.d_head))
+        self.b_V = nn.Parameter(t.empty(config.n_heads, config.d_head))
+        self.b_O = nn.Parameter(t.empty(config.d_model))
+
+        nn.init_normal_(self.W_Q, std=config.init_range)
+        nn.init_normal_(self.W_K, std=config.init_range)
+        nn.init_normal_(self.W_V, std=config.init_range)
+        nn.init_normal_(self.W_O, std=config.init_range)
+
+        # used in masking attention
+        self.register_buffer("IGNORE", t.tensor(float("-inf"), dtype=t.float32, device=cfg.DEVICE))
+
+    def forward(self,
+                normalized_resid_pre: Float[Tensor, "batch posn d_model"]
+                ) -> Float[Tensor, "batch posn d_model"]:
+
+        Q = einops.einsum(self.W_Q, normalized_resid_pre,
+                          "n d h, b p d -> b p n h") + self.b_Q
+        K = einops.einsum(self.W_K, normalized_resid_pre,
+                          "n d h, b p d -> b p n h") + self.b_K
+        V = einops.einsum(self.W_V, normalized_resid_pre,
+                          "n d h, b p d -> b p n h") + self.b_V
+
+        attn_scores = einops.einsum(Q, K, "b pq n h, b pk n h -> b n pq pk")/math.sqrt(self.config.d_head)
+        attn_scores = self.apply_causal_mask(attn_scores)
+
+        z = einops.einsum(attn_scores,
+                          V,
+                          "b p n pq pk, b p n h -> b pq n h"
+                          )
+        
+        result = einops.einsum(z, self.W_O, "b p n h, n h d -> b p n d")
+        attn_out = einops.einsum(result, "b p n e -> b p e") + self.b_O
+
+        return attn_out
+
+    def apply_causal_mask(self, 
+                          scores: Float[Tensor, "batch n_heads pos_q pos_k"]
+                          ) -> Float[Tensor, "batch n_heads pos_q pos_k"]:
+        """
+        Applies a causal mask to scores and returns masked scores 
+        :param scores: 
+        :type scores: Float[Tensor, "batch n_heads pos_q pos_k"]
+        :return: Description
+        :rtype: Tensor
+        """
+        
+        s = scores.shape[-1]
+        ones = t.ones(s, s, device=scores.device)
+        mask = t.triu(ones, diagonal=1).bool()
+        
+        return scores.masked_fill_(mask, self.IGNORE)
+
+
 
 
 class MLP(nn.Module):

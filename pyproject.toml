@@ -1,0 +1,14 @@
+[tool.pyright]
+reportGeneralTypeIssues = false
+reportInvalidTypeArguments = false
+
+typeCheckingMode = "off"
+
+[tool.ruff]
+lint.ignore = [
+    "F722", # Syntax error in forward annotation (this is the big one for jaxtyping)
+    "F821", # Undefined name (if it doesn't recognize dimensions)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"models/*" = ["F722"]

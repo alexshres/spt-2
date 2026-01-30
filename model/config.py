@@ -1,5 +1,7 @@
 import dataclasses
+import torch as t
 
+DEVICE = "cuda" if t.cuda.is_available() else "cpu"
 
 @dataclasses.dataclass
 class Config:
